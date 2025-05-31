@@ -31,8 +31,8 @@ A web application that analyzes public GitHub repositories, providing insights i
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/github-repo-analyzer.git
-   cd github-repo-analyzer
+   git clone https://github.com/Gags1404/github-repo-analyser.git
+   cd github-repo-analyser
    ```
 
 2. Create and activate a virtual environment:
@@ -70,12 +70,12 @@ A web application that analyzes public GitHub repositories, providing insights i
 
 7. Open your browser and navigate to `http://localhost:5000`
 
-#### Docker Deployment
+#### Docker Deployment (Recommended)
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/github-repo-analyzer.git
-   cd github-repo-analyzer
+   git clone https://github.com/Gags1404/github-repo-analyser.git
+   cd github-repo-analyser
    ```
 
 2. Create a `.env` file from the example:
@@ -91,6 +91,8 @@ A web application that analyzes public GitHub repositories, providing insights i
    GITHUB_TOKEN=your_github_personal_access_token
    SECRET_KEY=your_secure_random_key_here
    ```
+
+   > **Important**: The GitHub token is required to avoid API rate limiting. You can create one at [GitHub Settings > Developer Settings > Personal Access Tokens](https://github.com/settings/tokens). The token only needs `public_repo` scope for analyzing public repositories.
 
 4. For development mode (without Nginx):
    ```bash
