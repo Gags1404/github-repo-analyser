@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Server Error - GitHub Repository Analyzer{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 text-center">
+        <div class="card shadow">
+            <div class="card-body py-5">
+                <h1 class="display-1 text-danger mb-4">500</h1>
+                <h2 class="mb-4">Server Error</h2>
+                <p class="lead mb-4">Sorry, something went wrong on our end. We're working to fix the issue.</p>
+                <img src="{{ url_for('static', filename='images/octocat_sad.png') }}" alt="Sad Octocat" class="img-fluid mb-4" style="max-height: 200px;">
+                <div>
+                    <a href="{{ url_for('index') }}" class="btn btn-primary btn-lg">
+                        <i class="fas fa-home me-2"></i>Return to Home
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

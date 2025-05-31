@@ -1,0 +1,383 @@
+{% extends "base.html" %}
+
+{% block title %}Repository Comparison{% endblock %}
+
+{% block head_extras %}
+<!-- Chart.js and plugins -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.1.0/dist/chartjs-plugin-datalabels.min.js"></script>
+
+<!-- Additional CSS for comparison page -->
+<style>
+    .comparison-card {
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        height: 100%;
+    }
+    .comparison-header {
+        background-color: #f8f9fa;
+        border-bottom: 1px solid #e9ecef;
+        border-radius: 10px 10px 0 0;
+        padding: 15px;
+    }
+    .comparison-body {
+        padding: 20px;
+    }
+    .score-container {
+        position: relative;
+        width: 100%;
+        height: 10px;
+        background-color: #e9ecef;
+        border-radius: 5px;
+        margin-bottom: 5px;
+        overflow: hidden; /* Prevent overflow */
+    }
+    .score-bar {
+        position: absolute;
+        height: 100%;
+        border-radius: 5px;
+        left: 0; /* Ensure proper positioning */
+        top: 0;
+        max-width: 100%; /* Prevent overflow */
+        transition: none; /* Disable animations */
+    }
+    .winner-badge {
+        position: absolute;
+        top: -10px;
+        right: -10px;
+        background-color: #28a745;
+        color: white;
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+    }
+    .vs-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+    }
+    .vs-circle {
+        width: 60px;
+        height: 60px;
+        background-color: #6c757d;
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        font-weight: bold;
+    }
+    .metric-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 10px;
+    }
+    .metric-label {
+        font-weight: bold;
+    }
+    .metric-value {
+        text-align: right;
+    }
+</style>
+
+<!-- Hidden data div to store template variables for JavaScript -->
+<div id="template-data" 
+     data-repo1-fullname="{{ repo1.full_name|safe }}"
+     data-repo1-stars="{{ repo1.stars|default(0) }}"
+     data-repo1-forks="{{ repo1.forks|default(0) }}"
+     data-repo1-watchers="{{ repo1.watchers|default(0) }}"
+     data-repo1-issues="{{ repo1.open_issues|default(0) }}"
+     data-repo1-health="{{ repo1.health_score|default(0) }}"
+     data-repo1-activity="{{ repo1.activity_score|default(0) }}"
+     data-repo1-community="{{ repo1.community_score|default(0) }}"
+     data-repo2-fullname="{{ repo2.full_name|safe }}"
+     data-repo2-stars="{{ repo2.stars|default(0) }}"
+     data-repo2-forks="{{ repo2.forks|default(0) }}"
+     data-repo2-watchers="{{ repo2.watchers|default(0) }}"
+     data-repo2-issues="{{ repo2.open_issues|default(0) }}"
+     data-repo2-health="{{ repo2.health_score|default(0) }}"
+     data-repo2-activity="{{ repo2.activity_score|default(0) }}"
+     data-repo2-community="{{ repo2.community_score|default(0) }}"
+     style="display: none;">
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h2 class="card-title text-center mb-4">
+                        <i class="fas fa-code-compare me-2"></i>Repository Comparison
+                    </h2>
+                    <p class="text-center text-muted">Comparing {{ repo1.full_name }} with {{ repo2.full_name }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main comparison cards -->
+    <div class="row mb-4">
+        <!-- First repository card -->
+        <div class="col-md-5">
+            <div class="comparison-card">
+                <div class="comparison-header">
+                    <h3>
+                        <a href="https://github.com/{{ repo1.full_name }}" target="_blank" class="text-decoration-none">
+                            <i class="fab fa-github me-2"></i>{{ repo1.full_name }}
+                        </a>
+                    </h3>
+                    {% if repo1.stars > repo2.stars or repo1.forks > repo2.forks %}
+                    <div class="winner-badge" title="Leading in popularity">
+                        <i class="fas fa-trophy"></i>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="comparison-body">
+                    <p class="lead">{{ repo1.description or 'No description available' }}</p>
+                    
+                    <div class="mb-3">
+                        <span class="badge bg-light text-dark me-1">
+                            <i class="fas fa-star me-1 text-warning"></i>{{ repo1.stars | format_number }}
+                        </span>
+                        <span class="badge bg-light text-dark me-1">
+                            <i class="fas fa-code-branch me-1 text-secondary"></i>{{ repo1.forks | format_number }}
+                        </span>
+                        <span class="badge bg-light text-dark me-1">
+                            <i class="fas fa-eye me-1 text-info"></i>{{ repo1.watchers | format_number }}
+                        </span>
+                        <span class="badge bg-light text-dark me-1">
+                            <i class="fas fa-exclamation-circle me-1 text-danger"></i>{{ repo1.open_issues | format_number }}
+                        </span>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="metric-row">
+                            <div class="metric-label">Primary Language:</div>
+                            <div class="metric-value">{{ repo1.primary_language or 'Not specified' }}</div>
+                        </div>
+                        <div class="metric-row">
+                            <div class="metric-label">Created:</div>
+                            <div class="metric-value">{{ repo1.created_at }}</div>
+                        </div>
+                        <div class="metric-row">
+                            <div class="metric-label">Last Updated:</div>
+                            <div class="metric-value">{{ repo1.updated_at }}</div>
+                        </div>
+                        <div class="metric-row">
+                            <div class="metric-label">Size:</div>
+                            <div class="metric-value">{{ (repo1.size / 1024)|round(1) }} MB</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Health Score -->
+                    <h5 class="mt-4">Health Score</h5>
+                    <div class="score-container">
+                        <div class="score-bar" data-score="{{ repo1.health_score }}" data-color="#28a745"></div>
+                    </div>
+                    <p class="text-end">{{ repo1.health_score }}%</p>
+                    
+                    <!-- Activity Score -->
+                    <h5 class="mt-3">Activity Score</h5>
+                    <div class="score-container">
+                        <div class="score-bar" data-score="{{ repo1.activity_score }}" data-color="#007bff"></div>
+                    </div>
+                    <p class="text-end">{{ repo1.activity_score }}%</p>
+                    
+                    <!-- Community Score -->
+                    <h5 class="mt-3">Community Score</h5>
+                    <div class="score-container">
+                        <div class="score-bar" data-score="{{ repo1.community_score }}" data-color="#6f42c1"></div>
+                    </div>
+                    <p class="text-end">{{ repo1.community_score }}%</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- VS column -->
+        <div class="col-md-2">
+            <div class="vs-container">
+                <div class="vs-circle">VS</div>
+            </div>
+        </div>
+        
+        <!-- Second repository card -->
+        <div class="col-md-5">
+            <div class="comparison-card">
+                <div class="comparison-header">
+                    <h3>
+                        <a href="https://github.com/{{ repo2.full_name }}" target="_blank" class="text-decoration-none">
+                            <i class="fab fa-github me-2"></i>{{ repo2.full_name }}
+                        </a>
+                    </h3>
+                    {% if repo2.stars > repo1.stars or repo2.forks > repo1.forks %}
+                    <div class="winner-badge" title="Leading in popularity">
+                        <i class="fas fa-trophy"></i>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="comparison-body">
+                    <p class="lead">{{ repo2.description or 'No description available' }}</p>
+                    
+                    <div class="mb-3">
+                        <span class="badge bg-light text-dark me-1">
+                            <i class="fas fa-star me-1 text-warning"></i>{{ repo2.stars | format_number }}
+                        </span>
+                        <span class="badge bg-light text-dark me-1">
+                            <i class="fas fa-code-branch me-1 text-secondary"></i>{{ repo2.forks | format_number }}
+                        </span>
+                        <span class="badge bg-light text-dark me-1">
+                            <i class="fas fa-eye me-1 text-info"></i>{{ repo2.watchers | format_number }}
+                        </span>
+                        <span class="badge bg-light text-dark me-1">
+                            <i class="fas fa-exclamation-circle me-1 text-danger"></i>{{ repo2.open_issues | format_number }}
+                        </span>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="metric-row">
+                            <div class="metric-label">Primary Language:</div>
+                            <div class="metric-value">{{ repo2.primary_language or 'Not specified' }}</div>
+                        </div>
+                        <div class="metric-row">
+                            <div class="metric-label">Created:</div>
+                            <div class="metric-value">{{ repo2.created_at }}</div>
+                        </div>
+                        <div class="metric-row">
+                            <div class="metric-label">Last Updated:</div>
+                            <div class="metric-value">{{ repo2.updated_at }}</div>
+                        </div>
+                        <div class="metric-row">
+                            <div class="metric-label">Size:</div>
+                            <div class="metric-value">{{ (repo2.size / 1024)|round(1) }} MB</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Health Score -->
+                    <h5 class="mt-4">Health Score</h5>
+                    <div class="score-container">
+                        <div class="score-bar" data-score="{{ repo2.health_score }}" data-color="#28a745"></div>
+                    </div>
+                    <p class="text-end">{{ repo2.health_score }}%</p>
+                    
+                    <!-- Activity Score -->
+                    <h5 class="mt-3">Activity Score</h5>
+                    <div class="score-container">
+                        <div class="score-bar" data-score="{{ repo2.activity_score }}" data-color="#007bff"></div>
+                    </div>
+                    <p class="text-end">{{ repo2.activity_score }}%</p>
+                    
+                    <!-- Community Score -->
+                    <h5 class="mt-3">Community Score</h5>
+                    <div class="score-container">
+                        <div class="score-bar" data-score="{{ repo2.community_score }}" data-color="#6f42c1"></div>
+                    </div>
+                    <p class="text-end">{{ repo2.community_score }}%</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Comparison chart -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h4 class="card-title mb-4">Repository Metrics Comparison</h4>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Metric</th>
+                                    <th>{{ repo1.full_name }}</th>
+                                    <th>{{ repo2.full_name }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>Stars</strong></td>
+                                    <td>{{ repo1.stars }}</td>
+                                    <td>{{ repo2.stars }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Forks</strong></td>
+                                    <td>{{ repo1.forks }}</td>
+                                    <td>{{ repo2.forks }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Watchers</strong></td>
+                                    <td>{{ repo1.watchers }}</td>
+                                    <td>{{ repo2.watchers }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Open Issues</strong></td>
+                                    <td>{{ repo1.open_issues }}</td>
+                                    <td>{{ repo2.open_issues }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Health Score</strong></td>
+                                    <td>{{ repo1.health_score }}%</td>
+                                    <td>{{ repo2.health_score }}%</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Activity Score</strong></td>
+                                    <td>{{ repo1.activity_score }}%</td>
+                                    <td>{{ repo2.activity_score }}%</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Community Score</strong></td>
+                                    <td>{{ repo1.community_score }}%</td>
+                                    <td>{{ repo2.community_score }}%</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Action buttons -->
+    <div class="row mb-5">
+        <div class="col-12 text-center">
+            <a href="{{ url_for('view_repository', repo_id=repo1.id) }}" class="btn btn-outline-primary me-2">
+                <i class="fas fa-chart-line me-1"></i>View {{ repo1.name }} Details
+            </a>
+            <a href="{{ url_for('view_repository', repo_id=repo2.id) }}" class="btn btn-outline-primary me-2">
+                <i class="fas fa-chart-line me-1"></i>View {{ repo2.name }} Details
+            </a>
+            <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-home me-1"></i>Back to Home
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Initialize score bars on page load - with improved handling to prevent layout shifts
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize score bars
+        const scoreBars = document.querySelectorAll('.score-bar');
+        scoreBars.forEach(function(bar) {
+            // Get score and ensure it's a valid number between 0-100
+            let score = parseInt(bar.dataset.score) || 0;
+            score = Math.max(0, Math.min(100, score));
+            
+            // Apply styles in a way that minimizes layout shifts
+            const color = bar.dataset.color || '#28a745';
+            bar.style.backgroundColor = color;
+            // Set width last to prevent layout shifts
+            bar.style.width = score + '%';
+        });
+    });
+</script>
+{% endblock %}

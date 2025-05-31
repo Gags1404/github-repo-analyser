@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block title %}Analysis History - GitHub Repository Analyzer{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12 mb-3">
+        <div class="d-flex justify-content-between align-items-center">
+            <h2><i class="fas fa-history me-2"></i>Previously Analyzed Repositories</h2>
+            <a href="{{ url_for('index') }}" class="btn btn-primary">
+                <i class="fas fa-search me-1"></i> Analyze New Repository
+            </a>
+        </div>
+        <hr>
+    </div>
+
+    <div class="col-12">
+        {% if repositories.items %}
+            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+                {% for repo in repositories.items %}
+                <div class="col">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-header bg-dark text-white">
+                            <h5 class="card-title mb-0 text-truncate">
+                                <i class="fab fa-github me-2"></i>{{ repo.full_name }}
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="card-text text-truncate">{{ repo.description or 'No description available' }}</p>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="badge bg-primary">
+                                    <i class="fas fa-star me-1"></i>{{ repo.stars }}
+                                </span>
+                                <span class="badge bg-secondary">
+                                    <i class="fas fa-code-branch me-1"></i>{{ repo.forks }}
+                                </span>
+                                <span class="badge bg-info">
+                                    <i class="fas fa-eye me-1"></i>{{ repo.watchers }}
+                                </span>
+                                <span class="badge bg-warning">
+                                    <i class="fas fa-exclamation-circle me-1"></i>{{ repo.open_issues }}
+                                </span>
+                            </div>
+                            <p class="card-text">
+                                <small class="text-muted">
+                                    <i class="fas fa-code me-1"></i>{{ repo.primary_language or 'Not specified' }}
+                                </small>
+                            </p>
+                            <p class="card-text">
+                                <small class="text-muted">
+                                    <i class="fas fa-clock me-1"></i>Analyzed: {{ repo.last_analyzed.strftime('%Y-%m-%d %H:%M') }}
+                                </small>
+                            </p>
+                        </div>
+                        <div class="card-footer bg-light">
+                            <a href="{{ url_for('view_repository', repo_id=repo.id) }}" class="btn btn-outline-primary w-100">
+                                <i class="fas fa-chart-bar me-1"></i>View Analysis
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Pagination -->
+            {% if repositories.pages > 1 %}
+            <nav aria-label="Repository history pagination" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if repositories.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('history', page=repositories.prev_num) }}" aria-label="Previous">
+                            <span aria-hidden="true">&laquo;</span>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">&laquo;</span>
+                    </li>
+                    {% endif %}
+                    
+                    {% for page_num in repositories.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+                        {% if page_num %}
+                            {% if page_num == repositories.page %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ page_num }}</span>
+                            </li>
+                            {% else %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('history', page=page_num) }}">{{ page_num }}</a>
+                            </li>
+                            {% endif %}
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">...</span>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if repositories.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('history', page=repositories.next_num) }}" aria-label="Next">
+                            <span aria-hidden="true">&raquo;</span>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">&raquo;</span>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>No repositories have been analyzed yet. 
+                <a href="{{ url_for('index') }}" class="alert-link">Analyze your first repository</a>.
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

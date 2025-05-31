@@ -1,0 +1,384 @@
+{% extends "base.html" %}
+
+{% block title %}GitHub Repository Analyzer - Home{% endblock %}
+
+{% block head_extras %}
+<style>
+    .hero-section {
+        padding: 3rem 0;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .hero-bg {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, rgba(13, 110, 253, 0.1), rgba(13, 110, 253, 0.05));
+        z-index: -1;
+    }
+    
+    .hero-title {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 1.5rem;
+    }
+    
+    .hero-subtitle {
+        font-size: 1.25rem;
+        margin-bottom: 2rem;
+        opacity: 0.8;
+    }
+    
+    .features-section {
+        padding: 2rem 0;
+    }
+    
+    .feature-card {
+        height: 100%;
+        border: none;
+        border-radius: var(--border-radius);
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+    
+    .feature-card:hover {
+        transform: translateY(-10px);
+    }
+    
+    .feature-icon {
+        font-size: 2.5rem;
+        margin-bottom: 1.5rem;
+        color: var(--primary-color);
+    }
+    
+    .example-repo-card {
+        border: none;
+        border-radius: var(--border-radius);
+        overflow: hidden;
+        transition: all 0.3s ease;
+        height: 100%;
+    }
+    
+    .example-repo-card:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--card-shadow);
+    }
+    
+    .example-repo-card .card-body {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .example-repo-card .card-text {
+        flex-grow: 1;
+    }
+    
+    .repo-logo {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        margin-right: 1rem;
+        object-fit: cover;
+    }
+    
+    .repo-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+    
+    .repo-stats-mini {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1rem;
+        font-size: 0.9rem;
+    }
+    
+    .repo-stat-mini {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        color: var(--secondary-color);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-section animate__animated animate__fadeIn">
+    <div class="hero-bg"></div>
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-6 animate__animated animate__slideInLeft">
+                <h1 class="hero-title">GitHub Repository Analyzer</h1>
+                <p class="hero-subtitle">Gain powerful insights into any GitHub repository with detailed analytics, visualizations, and metrics.</p>
+                
+                <div class="card shadow-lg">
+                    <div class="card-body p-4">
+                        <form id="repo-form" action="{{ url_for('analyze_repository') }}" method="POST">
+                            <div class="mb-4">
+                                <label for="repo-url" class="form-label fw-bold">Enter GitHub Repository</label>
+                                <div class="input-group input-group-lg">
+                                    <span class="input-group-text"><i class="fab fa-github"></i></span>
+                                    <input type="text" class="form-control" id="repo-url" name="repo_url" 
+                                        placeholder="username/repository or full URL" required>
+                                    <button type="submit" class="btn btn-primary px-4">
+                                        <i class="fas fa-search me-2"></i>Analyze
+                                    </button>
+                                </div>
+                                <div id="repo-feedback" class="form-text mt-2"></div>
+                            </div>
+                            
+
+                            <!-- Deep analysis option removed as it wasn't providing any actual difference -->
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6 d-none d-lg-block animate__animated animate__slideInRight">
+                <div class="text-center">
+                    <img src="{{ url_for('static', filename='img/analysis-illustration.svg') }}" alt="Repository Analysis" class="img-fluid" onerror="this.src='https://via.placeholder.com/500x400?text=GitHub+Repository+Analysis'; this.onerror=null;">
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section class="features-section">
+    <div class="container">
+        <h2 class="text-center mb-4 animate__animated animate__fadeIn">Key Features</h2>
+        <div class="row g-4">
+            <div class="col-md-4 animate__animated animate__fadeInUp">
+                <div class="card feature-card h-100">
+                    <div class="card-body text-center p-4">
+                        <div class="feature-icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <h4>Commit Analytics</h4>
+                        <p>Visualize commit patterns, frequency, and contributor activity over time with interactive charts.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 animate__animated animate__fadeInUp" style="animation-delay: 0.1s">
+                <div class="card feature-card h-100">
+                    <div class="card-body text-center p-4">
+                        <div class="feature-icon">
+                            <i class="fas fa-code"></i>
+                        </div>
+                        <h4>Code Insights</h4>
+                        <p>Analyze language distribution, code complexity, and identify key components of any repository.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 animate__animated animate__fadeInUp" style="animation-delay: 0.2s">
+                <div class="card feature-card h-100">
+                    <div class="card-body text-center p-4">
+                        <div class="feature-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <h4>Contributor Metrics</h4>
+                        <p>Identify top contributors, collaboration patterns, and team dynamics with detailed profiles.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Example Repositories Section -->
+<section class="py-5 animate__animated animate__fadeIn">
+    <div class="container">
+        <h2 class="text-center mb-4">Popular Repositories to Analyze</h2>
+        <div class="row g-4">
+            <div class="col-md-6 col-lg-3 animate__animated animate__fadeInUp">
+                <div class="card example-repo-card h-100">
+                    <div class="card-body">
+                        <div class="repo-header">
+                            <img src="https://avatars.githubusercontent.com/u/27804?s=200&v=4" alt="Flask" class="repo-logo" data-fallback="{{ url_for('static', filename='img/default-repo.png') }}" onerror="this.src=this.getAttribute('data-fallback'); this.onerror=null;">
+                            <h5 class="card-title mb-0">Flask</h5>
+                        </div>
+                        <div class="repo-stats-mini">
+                            <div class="repo-stat-mini"><i class="fas fa-star"></i> 64k+</div>
+                            <div class="repo-stat-mini"><i class="fas fa-code-branch"></i> 16k+</div>
+                        </div>
+                        <p class="card-text">The Python micro framework for building web applications</p>
+                        <button class="btn btn-primary w-100 example-repo" data-repo="pallets/flask">
+                            <i class="fas fa-chart-bar me-2"></i>Analyze
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3 animate__animated animate__fadeInUp" style="animation-delay: 0.1s">
+                <div class="card example-repo-card h-100">
+                    <div class="card-body">
+                        <div class="repo-header">
+                            <img src="https://avatars.githubusercontent.com/u/2918581?s=200&v=4" alt="Bootstrap" class="repo-logo" data-fallback="{{ url_for('static', filename='img/default-repo.png') }}" onerror="this.src=this.getAttribute('data-fallback'); this.onerror=null;">
+                            <h5 class="card-title mb-0">Bootstrap</h5>
+                        </div>
+                        <div class="repo-stats-mini">
+                            <div class="repo-stat-mini"><i class="fas fa-star"></i> 160k+</div>
+                            <div class="repo-stat-mini"><i class="fas fa-code-branch"></i> 78k+</div>
+                        </div>
+                        <p class="card-text">The most popular HTML, CSS, and JavaScript framework</p>
+                        <button class="btn btn-primary w-100 example-repo" data-repo="twbs/bootstrap">
+                            <i class="fas fa-chart-bar me-2"></i>Analyze
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3 animate__animated animate__fadeInUp" style="animation-delay: 0.2s">
+                <div class="card example-repo-card h-100">
+                    <div class="card-body">
+                        <div class="repo-header">
+                            <img src="https://avatars.githubusercontent.com/u/69631?s=200&v=4" alt="React" class="repo-logo" data-fallback="{{ url_for('static', filename='img/default-repo.png') }}" onerror="this.src=this.getAttribute('data-fallback'); this.onerror=null;">
+                            <h5 class="card-title mb-0">React</h5>
+                        </div>
+                        <div class="repo-stats-mini">
+                            <div class="repo-stat-mini"><i class="fas fa-star"></i> 200k+</div>
+                            <div class="repo-stat-mini"><i class="fas fa-code-branch"></i> 42k+</div>
+                        </div>
+                        <p class="card-text">A JavaScript library for building user interfaces</p>
+                        <button class="btn btn-primary w-100 example-repo" data-repo="facebook/react">
+                            <i class="fas fa-chart-bar me-2"></i>Analyze
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3 animate__animated animate__fadeInUp" style="animation-delay: 0.3s">
+                <div class="card example-repo-card h-100">
+                    <div class="card-body">
+                        <div class="repo-header">
+                            <img src="https://avatars.githubusercontent.com/u/6154722?s=200&v=4" alt="VS Code" class="repo-logo" data-fallback="{{ url_for('static', filename='img/default-repo.png') }}" onerror="this.src=this.getAttribute('data-fallback'); this.onerror=null;">
+                            <h5 class="card-title mb-0">VS Code</h5>
+                        </div>
+                        <div class="repo-stats-mini">
+                            <div class="repo-stat-mini"><i class="fas fa-star"></i> 145k+</div>
+                            <div class="repo-stat-mini"><i class="fas fa-code-branch"></i> 25k+</div>
+                        </div>
+                        <p class="card-text">Microsoft's powerful code editor for modern development</p>
+                        <button class="btn btn-primary w-100 example-repo" data-repo="microsoft/vscode">
+                            <i class="fas fa-chart-bar me-2"></i>Analyze
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Handle example repository buttons
+        document.querySelectorAll('.example-repo').forEach(button => {
+            button.addEventListener('click', function() {
+                const repoUrl = this.getAttribute('data-repo');
+                document.getElementById('repo-url').value = repoUrl;
+                
+                // Show loading overlay
+                const loadingOverlay = document.getElementById('loading-overlay');
+                const loadingMessage = document.getElementById('loading-message');
+                const loadingProgress = document.getElementById('loading-progress');
+                
+                if (loadingOverlay && loadingMessage) {
+                    loadingMessage.textContent = "Analyzing " + repoUrl + "...";
+                    loadingOverlay.style.display = 'flex';
+                    
+                    // Simulate progress for better UX
+                    let progress = 0;
+                    const progressInterval = setInterval(() => {
+                        progress += Math.random() * 15;
+                        if (progress > 90) {
+                            progress = 90; // Cap at 90% until actual completion
+                            clearInterval(progressInterval);
+                        }
+                        if (loadingProgress) {
+                            loadingProgress.style.width = progress + "%";
+                        }
+                    }, 700);
+                }
+                
+                document.getElementById('repo-form').submit();
+            });
+        });
+        
+        // Real-time form validation
+        const repoUrlInput = document.getElementById('repo-url');
+        const repoFeedback = document.getElementById('repo-feedback');
+        const repoForm = document.getElementById('repo-form');
+        
+        repoUrlInput.addEventListener('input', validateRepoUrl);
+        
+        function validateRepoUrl() {
+            const repoUrl = repoUrlInput.value.trim();
+            const githubUrlPattern = /^(https?:\/\/github\.com\/)?[\w.-]+\/[\w.-]+$/;
+            
+            if (repoUrl === '') {
+                repoFeedback.textContent = '';
+                repoFeedback.className = 'form-text mt-2';
+                repoUrlInput.classList.remove('is-invalid', 'is-valid');
+                return false;
+            }
+            
+            if (githubUrlPattern.test(repoUrl)) {
+                repoFeedback.textContent = 'Valid repository format ✓';
+                repoFeedback.className = 'form-text text-success mt-2';
+                repoUrlInput.classList.remove('is-invalid');
+                repoUrlInput.classList.add('is-valid');
+                return true;
+            } else {
+                repoFeedback.textContent = 'Please enter a valid GitHub repository URL or owner/name format';
+                repoFeedback.className = 'form-text text-danger mt-2';
+                repoUrlInput.classList.remove('is-valid');
+                repoUrlInput.classList.add('is-invalid');
+                return false;
+            }
+        }
+        
+        repoForm.addEventListener('submit', function(event) {
+            if (!validateRepoUrl()) {
+                event.preventDefault();
+                repoUrlInput.focus();
+                return false;
+            }
+            
+            // Show loading overlay on form submission
+            const loadingOverlay = document.getElementById('loading-overlay');
+            const loadingMessage = document.getElementById('loading-message');
+            const loadingProgress = document.getElementById('loading-progress');
+            const repoUrl = repoUrlInput.value.trim();
+            
+            if (loadingOverlay && loadingMessage) {
+                loadingMessage.textContent = `Analyzing ${repoUrl}...`;
+                loadingOverlay.style.display = 'flex';
+                
+                // Simulate progress for better UX
+                let progress = 0;
+                const progressInterval = setInterval(() => {
+                    progress += Math.random() * 15;
+                    if (progress > 90) {
+                        progress = 90; // Cap at 90% until actual completion
+                        clearInterval(progressInterval);
+                    }
+                    if (loadingProgress) {
+                        loadingProgress.style.width = `${progress}%`;
+                    }
+                }, 700);
+            }
+            
+            return true;
+        });
+        
+        // Initialize tooltips
+        if (typeof tippy !== 'undefined') {
+            tippy('[data-tippy-content]');
+        }
+    });
+
+</script>
+{% endblock %}

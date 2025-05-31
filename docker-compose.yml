@@ -1,0 +1,58 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: github-repo-analyzer:latest
+    container_name: github-repo-analyzer
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    volumes:
+      - github_data:/data
+    env_file:
+      - .env
+    environment:
+      - FLASK_APP=app.py
+      - FLASK_ENV=production
+      - DATABASE_URL=sqlite:////data/github_repos.db
+      - SECRET_KEY=${SECRET_KEY:-default_development_key_change_in_production}
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      - CACHE_TIMEOUT=${CACHE_TIMEOUT:-3600}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/", "||" , "exit", "1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Production setup with Nginx as reverse proxy
+  nginx:
+    image: nginx:stable-alpine
+    container_name: github-repo-analyzer-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./nginx/logs:/var/log/nginx
+    depends_on:
+      - web
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/health", "||" , "exit", "1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    profiles: ["prod"]
+
+volumes:
+  github_data:
+    name: github-repo-analyzer-data

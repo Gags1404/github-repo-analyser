@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Analyze GitHub repositories and gain insights into code, contributors, and activity patterns">
+    <title>{% block title %}GitHub Repository Analyzer{% endblock %}</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.png') }}">
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- Animate.css for animations -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    
+    <!-- Tippy.js for enhanced tooltips -->
+    <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/dist/tippy.css">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    
+    <!-- Chart.js for visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+    
+    {% block head_extras %}{% endblock %}
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-glass fixed-top">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('index') }}">
+                <i class="fab fa-github me-2 pulse-icon"></i>
+                <span class="brand-text">GitHub Repository Analyzer</span>
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.path == url_for('index') %}active{% endif %}" href="{{ url_for('index') }}">
+                            <i class="fas fa-home nav-icon"></i> Home
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.path == url_for('history') %}active{% endif %}" href="{{ url_for('history') }}">
+                            <i class="fas fa-history nav-icon"></i> History
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#compareModal">
+                            <i class="fas fa-code-compare nav-icon"></i> Compare
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#aboutModal">
+                            <i class="fas fa-info-circle nav-icon"></i> About
+                        </a>
+                    </li>
+                </ul>
+                <div class="d-flex align-items-center">
+                    <!-- Dark mode toggle -->
+                    <button class="btn btn-icon" id="darkModeToggle" aria-label="Toggle dark mode">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Spacer for fixed navbar -->
+    <div class="navbar-spacer"></div>
+
+    <!-- Flash Messages -->
+    <div class="container mt-3" id="flash-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show animate__animated animate__fadeIn" role="alert">
+                        <i class="fas fa-{% if category == 'success' %}check-circle{% elif category == 'info' %}info-circle{% elif category == 'warning' %}exclamation-triangle{% else %}exclamation-circle{% endif %} me-2"></i>
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <!-- Main Content -->
+    <main class="container my-4 animate__animated animate__fadeIn">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer py-4 mt-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-4">
+                    <h5 class="footer-heading">GitHub Repository Analyzer</h5>
+                    <p>A powerful tool to analyze public GitHub repositories and provide detailed insights using the GitHub API.</p>
+                </div>
+                <div class="col-md-4">
+                    <h5 class="footer-heading">Quick Links</h5>
+                    <ul class="list-unstyled footer-links">
+                        <li><a href="{{ url_for('index') }}"><i class="fas fa-angle-right me-2"></i>Home</a></li>
+                        <li><a href="{{ url_for('history') }}"><i class="fas fa-angle-right me-2"></i>History</a></li>
+                        <li><a href="#" data-bs-toggle="modal" data-bs-target="#aboutModal"><i class="fas fa-angle-right me-2"></i>About</a></li>
+                        <li><a href="https://developer.github.com/v3/" target="_blank"><i class="fas fa-angle-right me-2"></i>GitHub API</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-4">
+                    <h5 class="footer-heading">Connect</h5>
+                    <div class="social-icons">
+                        <a href="https://github.com" target="_blank" class="social-icon"><i class="fab fa-github"></i></a>
+                        <a href="https://twitter.com" target="_blank" class="social-icon"><i class="fab fa-twitter"></i></a>
+                        <a href="https://linkedin.com" target="_blank" class="social-icon"><i class="fab fa-linkedin"></i></a>
+                    </div>
+                    <p class="mt-3"><i class="far fa-copyright me-1"></i>2025 GitHub Repository Analyzer</p>
+                    <p class="small text-muted">Powered by Flask, Bootstrap, and Chart.js</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- About Modal -->
+    <div class="modal fade" id="aboutModal" tabindex="-1" aria-labelledby="aboutModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="aboutModalLabel"><i class="fas fa-info-circle me-2"></i>About GitHub Repository Analyzer</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-4 text-center mb-3">
+                            <i class="fab fa-github fa-6x mb-3 text-primary"></i>
+                            <h4>Version 2.0</h4>
+                            <p class="text-muted">Released May 2025</p>
+                        </div>
+                        <div class="col-md-8">
+                            <h4>What is GitHub Repository Analyzer?</h4>
+                            <p>GitHub Repository Analyzer is a powerful tool that provides detailed insights into public GitHub repositories. It analyzes code, contributors, commit patterns, and more to give you a comprehensive understanding of any repository.</p>
+                            
+                            <h4 class="mt-4">Key Features</h4>
+                            <ul class="feature-list">
+                                <li><i class="fas fa-chart-line text-primary me-2"></i>Detailed commit activity analysis</li>
+                                <li><i class="fas fa-code text-primary me-2"></i>Language breakdown and statistics</li>
+                                <li><i class="fas fa-users text-primary me-2"></i>Contributor insights and contributions</li>
+                                <li><i class="fas fa-history text-primary me-2"></i>Repository timeline visualization</li>
+                                <li><i class="fas fa-tachometer-alt text-primary me-2"></i>Repository health score</li>
+                                <li><i class="fas fa-code-branch text-primary me-2"></i>Branch and fork analysis</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row mt-3">
+                        <div class="col-md-6">
+                            <h5><i class="fas fa-cogs me-2"></i>Technologies Used</h5>
+                            <div class="tech-stack">
+                                <span class="badge bg-primary">Python</span>
+                                <span class="badge bg-secondary">Flask</span>
+                                <span class="badge bg-success">SQLAlchemy</span>
+                                <span class="badge bg-danger">Bootstrap 5</span>
+                                <span class="badge bg-warning text-dark">Chart.js</span>
+                                <span class="badge bg-info text-dark">GitHub API</span>
+                                <span class="badge bg-dark">Docker</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h5><i class="fas fa-user-shield me-2"></i>Privacy & Data</h5>
+                            <p>We only analyze public repositories and do not store any sensitive information. All analyses are cached for performance but can be cleared at any time.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Compare Repositories Modal -->
+    <div class="modal fade" id="compareModal" tabindex="-1" aria-labelledby="compareModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="compareModalLabel"><i class="fas fa-code-compare me-2"></i>Compare Repositories</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="compareForm" action="{{ url_for('compare_repositories') }}" method="POST">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="repo1" class="form-label">First Repository</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fab fa-github"></i></span>
+                                        <input type="text" class="form-control" id="repo1" name="repo1" placeholder="owner/repo" required>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="repo2" class="form-label">Second Repository</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fab fa-github"></i></span>
+                                        <input type="text" class="form-control" id="repo2" name="repo2" placeholder="owner/repo" required>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Comparison Metrics</label>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="compareCommits" name="metrics" value="commits" checked>
+                                        <label class="form-check-label" for="compareCommits">Commit Activity</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="compareContributors" name="metrics" value="contributors" checked>
+                                        <label class="form-check-label" for="compareContributors">Contributors</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="compareLanguages" name="metrics" value="languages" checked>
+                                        <label class="form-check-label" for="compareLanguages">Languages</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="compareStats" name="metrics" value="stats" checked>
+                                        <label class="form-check-label" for="compareStats">Repository Stats</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="compareHealth" name="metrics" value="health" checked>
+                                        <label class="form-check-label" for="compareHealth">Health Score</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-chart-bar me-2"></i>Compare Repositories
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="loading-content">
+            <div class="spinner-container">
+                <div class="loading-spinner"></div>
+            </div>
+            <div class="loading-text">
+                <h4 id="loading-message">Analyzing repository...</h4>
+                <div class="progress mt-3">
+                    <div id="loading-progress" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Tippy.js for enhanced tooltips -->
+    <script src="https://unpkg.com/@popperjs/core@2"></script>
+    <script src="https://unpkg.com/tippy.js@6"></script>
+    
+    <!-- Custom JavaScript -->
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    
+    <script>
+        // Initialize dark mode
+        document.addEventListener('DOMContentLoaded', function() {
+            // Dark mode toggle
+            const darkModeToggle = document.getElementById('darkModeToggle');
+            const htmlElement = document.documentElement;
+            
+            // Check for saved theme preference or respect OS preference
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme) {
+                htmlElement.setAttribute('data-bs-theme', savedTheme);
+                updateDarkModeIcon(savedTheme === 'dark');
+            } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                htmlElement.setAttribute('data-bs-theme', 'dark');
+                updateDarkModeIcon(true);
+            }
+            
+            // Toggle dark/light mode
+            darkModeToggle.addEventListener('click', function() {
+                const currentTheme = htmlElement.getAttribute('data-bs-theme');
+                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                
+                htmlElement.setAttribute('data-bs-theme', newTheme);
+                localStorage.setItem('theme', newTheme);
+                updateDarkModeIcon(newTheme === 'dark');
+            });
+            
+            function updateDarkModeIcon(isDark) {
+                const icon = darkModeToggle.querySelector('i');
+                if (isDark) {
+                    icon.classList.remove('fa-moon');
+                    icon.classList.add('fa-sun');
+                } else {
+                    icon.classList.remove('fa-sun');
+                    icon.classList.add('fa-moon');
+                }
+            }
+            
+            // Initialize tooltips
+            tippy('[data-tippy-content]');
+            
+            // Demo mode has been removed
+        });
+    </script>
+    
+    {% block scripts %}{% endblock %}
+</body>
+</html>

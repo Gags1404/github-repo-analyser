@@ -1,0 +1,740 @@
+{% extends "base.html" %}
+
+{% block title %}{{ repository.full_name }} - Analysis Results{% endblock %}
+
+{% block head_extras %}
+<!-- Chart.js and plugins -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.1.0/dist/chartjs-plugin-datalabels.min.js"></script>
+
+<!-- Additional CSS for repository results page -->
+<style>
+    /* Animation for repository cards */
+    .repo-card {
+        transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+        box-shadow: var(--shadow-sm);
+    }
+    .repo-card:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--shadow-lg);
+    }
+    
+    /* Health score indicator */
+    .health-score-container {
+        position: relative;
+        width: 140px;
+        height: 140px;
+        margin: 0 auto;
+    }
+    .health-score {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        font-weight: 700;
+        z-index: 10; /* Ensure this appears above the chart */
+        pointer-events: none; /* Allow clicks to pass through to the chart */
+    }
+    .health-score-value {
+        font-size: 2.2rem;
+        line-height: 1;
+        text-shadow: 0 0 5px rgba(255, 255, 255, 0.7); /* Add text shadow for better visibility */
+    }
+    .health-score-label {
+        font-size: 0.8rem;
+        opacity: 0.8;
+        margin-top: 5px;
+        text-shadow: 0 0 3px rgba(255, 255, 255, 0.7); /* Add text shadow for better visibility */
+    }
+    
+    /* Contributors section */
+    .contributor-avatar {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        border: 2px solid var(--bs-white);
+        box-shadow: var(--shadow-sm);
+        transition: transform 0.3s ease;
+    }
+    .contributor-row:hover .contributor-avatar {
+        transform: scale(1.1);
+    }
+    
+    /* Commit list */
+    .commit-list {
+        max-height: 400px;
+        overflow-y: auto;
+        scrollbar-width: thin;
+    }
+    .commit-list::-webkit-scrollbar {
+        width: 6px;
+    }
+    .commit-list::-webkit-scrollbar-track {
+        background: var(--bs-light);
+        border-radius: 10px;
+    }
+    .commit-list::-webkit-scrollbar-thumb {
+        background: var(--bs-secondary);
+        border-radius: 10px;
+    }
+    .commit-item {
+        transition: background-color 0.2s ease;
+        border-left: 3px solid transparent;
+    }
+    .commit-item:hover {
+        background-color: rgba(var(--bs-primary-rgb), 0.05);
+        border-left-color: var(--bs-primary);
+    }
+    
+    /* Chart containers */
+    .chart-container {
+        position: relative;
+        margin: 0 auto;
+        height: 250px;
+        transition: all 0.3s ease;
+    }
+    .chart-container:hover {
+        transform: scale(1.02);
+    }
+    
+    /* Language badges */
+    .language-badge {
+        font-size: 0.85rem;
+        border-radius: var(--border-radius);
+        padding: 0.25rem 0.5rem;
+        margin-right: 0.5rem;
+        margin-bottom: 0.5rem;
+        display: inline-block;
+        transition: all 0.2s ease;
+    }
+    .language-badge:hover {
+        transform: translateY(-2px);
+    }
+    
+    /* Timeline */
+    .timeline-item {
+        position: relative;
+        padding-left: 30px;
+        margin-bottom: 15px;
+    }
+    .timeline-item:before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        height: 100%;
+        width: 2px;
+        background-color: var(--bs-primary);
+    }
+    .timeline-item:after {
+        content: '';
+        position: absolute;
+        left: -4px;
+        top: 0;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background-color: var(--bs-primary);
+    }
+    .timeline-item:last-child:before {
+        height: 0;
+    }
+    
+    /* Animations */
+    .fade-in {
+        animation: fadeIn 0.8s ease-in-out;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    .slide-in-right {
+        animation: slideInRight 0.5s ease-in-out;
+    }
+    @keyframes slideInRight {
+        from { transform: translateX(50px); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row fade-in">
+    <!-- Action buttons -->
+    <div class="col-12 mb-3 d-flex justify-content-between">
+        <div>
+            <a href="{{ url_for('index') }}" class="btn btn-outline-secondary me-2">
+                <i class="fas fa-arrow-left me-1"></i> Back to Search
+            </a>
+            <a href="{{ url_for('history') }}" class="btn btn-outline-primary">
+                <i class="fas fa-history me-1"></i> Analysis History
+            </a>
+        </div>
+        <div>
+            <button type="button" class="btn btn-outline-success me-2" data-bs-toggle="modal" data-bs-target="#compareModal">
+                <i class="fas fa-balance-scale me-1"></i> Compare With Another Repo
+            </button>
+            <button type="button" class="btn btn-outline-info" id="export-json-btn">
+                <i class="fas fa-file-export me-1"></i> Export Results
+            </button>
+        </div>
+    </div>
+
+    <!-- Repository Info Card -->
+    <div class="col-md-12 mb-4">
+        <div class="card shadow repo-card">
+            <div class="card-header bg-gradient text-white" style="background-color: var(--bs-primary);">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h3 class="mb-0">
+                        <i class="fab fa-github me-2"></i>
+                        <a href="{{ repository.html_url }}" target="_blank" class="text-white text-decoration-none">
+                            {{ repository.full_name }}
+                            <i class="fas fa-external-link-alt ms-1" style="font-size: 0.7em;"></i>
+                        </a>
+                    </h3>
+                    <div>
+                        <span class="badge bg-light text-dark me-1" title="Stars" data-tippy-content="{{ repository.stars }} stars">
+                            <i class="fas fa-star me-1 text-warning"></i>{{ repository.stars | format_number }}
+                        </span>
+                        <span class="badge bg-light text-dark me-1" title="Forks" data-tippy-content="{{ repository.forks }} forks">
+                            <i class="fas fa-code-branch me-1 text-secondary"></i>{{ repository.forks | format_number }}
+                        </span>
+                        <span class="badge bg-light text-dark me-1" title="Watchers" data-tippy-content="{{ repository.watchers }} watchers">
+                            <i class="fas fa-eye me-1 text-info"></i>{{ repository.watchers | format_number }}
+                        </span>
+                        <span class="badge bg-light text-dark me-1" title="Open Issues" data-tippy-content="{{ repository.open_issues }} open issues">
+                            <i class="fas fa-exclamation-circle me-1 text-danger"></i>{{ repository.open_issues | format_number }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <!-- Repository description and badges -->
+                    <div class="col-md-8">
+                        <div class="mb-4">
+                            <h5 class="border-bottom pb-2"><i class="fas fa-info-circle me-2 text-primary"></i>Description</h5>
+                            <p class="lead">{{ repository.description or 'No description available' }}</p>
+                        </div>
+                        
+                        <!-- Language badges -->
+                        <div class="mb-4">
+                            <h5 class="border-bottom pb-2"><i class="fas fa-code me-2 text-primary"></i>Languages</h5>
+                            <div class="mt-2">
+                                {% for language, percentage in languages.items() %}
+                                    <span class="language-badge"
+                                          data-language="{{ language }}"
+                                          data-color="{{ language_colors[language] if language in language_colors else '#6c757d' }}"
+                                          data-percentage="{{ percentage }}"
+                                    >{{ language }} {{ percentage }}%</span>
+                                {% else %}
+                                    <span class="text-muted">No language data available</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        
+                        <!-- Repository details in timeline format -->
+                        <div class="mb-4">
+                            <h5 class="border-bottom pb-2"><i class="fas fa-history me-2 text-primary"></i>Timeline</h5>
+                            <div class="mt-3">
+                                <div class="timeline-item">
+                                    <strong>Created</strong>
+                                    <div>{{ created_at }}</div>
+                                </div>
+                                <div class="timeline-item">
+                                    <strong>Last Updated</strong>
+                                    <div>{{ last_updated }}</div>
+                                </div>
+                                <div class="timeline-item">
+                                    <strong>Last Analyzed</strong>
+                                    <div>{{ now.strftime('%B %d, %Y at %H:%M') }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Repository stats -->
+                        <div class="mb-4">
+                            <h5 class="border-bottom pb-2"><i class="fas fa-chart-bar me-2 text-primary"></i>Key Stats</h5>
+                            <div class="mt-3">
+                                <span class="badge bg-secondary me-2 mb-2">Default Branch: {{ repository.default_branch }}</span>
+                                <span class="badge bg-secondary me-2 mb-2">Size: {{ (repository.size / 1024)|round(1) }} MB</span>
+                                <span class="badge bg-secondary me-2 mb-2">Primary Language: {{ repository.language or 'Not specified' }}</span>
+                                <span class="badge bg-secondary me-2 mb-2">Contributors: {{ contributors|length }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Repository health score -->
+                    <div class="col-md-4">
+                        <div class="mb-4">
+                            <h5 class="border-bottom pb-2 text-center"><i class="fas fa-heartbeat me-2 text-danger"></i>Repository Health</h5>
+                            <div class="health-score-container mt-4">
+                                <canvas id="healthScoreChart"></canvas>
+                                <div class="health-score">
+                                    <div class="health-score-value">{{ health_score|default(75) }}</div>
+                                    <div class="health-score-label">HEALTH SCORE</div>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-4">
+                                <div class="mb-3">
+                                    <label class="form-label d-flex justify-content-between">
+                                        <span>Documentation</span>
+                                        <span>{{ documentation_score|default(70) }}%</span>
+                                    </label>
+                                    <div class="progress">
+                                        <div class="progress-bar bg-info" role="progressbar"
+                                             data-score="{{ documentation_score|default(70) }}"
+                                             aria-valuemin="0"
+                                             aria-valuemax="100"></div>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label d-flex justify-content-between">
+                                        <span>Activity</span>
+                                        <span>{{ activity_score|default(85) }}%</span>
+                                    </label>
+                                    <div class="progress">
+                                        <div class="progress-bar bg-success" role="progressbar"
+                                             data-score="{{ activity_score|default(85) }}"
+                                             aria-valuemin="0"
+                                             aria-valuemax="100"></div>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label d-flex justify-content-between">
+                                        <span>Community</span>
+                                        <span>{{ community_score|default(65) }}%</span>
+                                    </label>
+                                    <div class="progress">
+                                        <div class="progress-bar bg-warning" role="progressbar"
+                                             data-score="{{ community_score|default(65) }}"
+                                             aria-valuemin="0"
+                                             aria-valuemax="100"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Language chart -->
+                        <div class="mb-4">
+                            <h5 class="border-bottom pb-2 text-center"><i class="fas fa-chart-pie me-2 text-primary"></i>Language Breakdown</h5>
+                            <div class="chart-container mt-3">
+                                <canvas id="languageChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contributors -->
+    <div class="col-md-6 mb-4">
+        <div class="card shadow h-100">
+            <div class="card-header bg-success text-white">
+                <h4 class="mb-0"><i class="fas fa-users me-2"></i>Top Contributors</h4>
+            </div>
+            <div class="card-body">
+                {% if contributors %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Contributions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for contributor in contributors %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <img src="{{ contributor.avatar_url }}" alt="{{ contributor.username }}" class="contributor-avatar me-2">
+                                            <a href="{{ contributor.html_url }}" target="_blank">{{ contributor.username }}</a>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-primary">{{ contributor.contributions }}</span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="alert alert-info">No contributor data available.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Commit Activity -->
+    <div class="col-md-6 mb-4">
+        <div class="card shadow h-100">
+            <div class="card-header bg-info text-white">
+                <h4 class="mb-0"><i class="fas fa-chart-line me-2"></i>Commit Activity</h4>
+            </div>
+            <div class="card-body">
+                <div class="chart-container" style="position: relative; height: 300px;">
+                    <canvas id="commitActivityChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Commits -->
+    <div class="col-md-12">
+        <div class="card shadow">
+            <div class="card-header bg-warning text-dark">
+                <h4 class="mb-0"><i class="fas fa-history me-2"></i>Recent Commits</h4>
+            </div>
+            <div class="card-body commit-list">
+                {% if commits %}
+                    <div class="list-group">
+                        {% for commit in commits %}
+                        <a href="{{ commit.html_url }}" target="_blank" class="list-group-item list-group-item-action">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h5 class="mb-1 text-truncate" style="max-width: 80%;">{{ commit.message.split('\n')[0] }}</h5>
+                                <small>{{ commit.author_date.strftime('%Y-%m-%d %H:%M') if commit.author_date else 'Unknown date' }}</small>
+                            </div>
+                            <p class="mb-1">
+                                <span class="badge bg-secondary">{{ commit.sha[:7] }}</span>
+                                <span class="ms-2">{{ commit.author_name }}</span>
+                            </p>
+                        </a>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="alert alert-info">No commit data available.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize tooltips
+        if (typeof tippy !== 'undefined') {
+            tippy('[data-tippy-content]');
+        }
+        
+        // Health Score Chart
+        const healthScoreCtx = document.getElementById('healthScoreChart').getContext('2d');
+        const healthScore = parseInt('{{ health_score|default(75) }}');
+        
+        new Chart(healthScoreCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Score', 'Remaining'],
+                datasets: [{
+                    data: [healthScore, 100 - healthScore],
+                    backgroundColor: [
+                        (healthScore >= 80 ? '#28a745' : (healthScore >= 60 ? '#ffc107' : '#dc3545')),
+                        '#e9ecef'
+                    ],
+                    borderWidth: 0,
+                    cutout: '75%'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        enabled: false
+                    },
+                    // Disable the default datalabels plugin to prevent showing the score in the chart
+                    datalabels: {
+                        display: false
+                    }
+                },
+                animation: {
+                    animateRotate: true,
+                    animateScale: true
+                },
+                // Prevent any automatic center text
+                elements: {
+                    center: {
+                        text: '',
+                        fontStyle: 'Arial',
+                        sidePadding: 20,
+                        minFontSize: 1,
+                        lineHeight: 25
+                    }
+                }
+            }
+        });
+        
+        // Language Breakdown Chart
+        let languageData = {};
+        try {
+            languageData = JSON.parse('{{ languages|tojson|safe }}');
+        } catch (e) {
+            console.error('Error parsing language data:', e);
+        }
+        
+        if (languageData && Object.keys(languageData).length > 0) {
+            const languageCtx = document.getElementById('languageChart').getContext('2d');
+            
+            // Extract data for chart
+            const languages = Object.keys(languageData);
+            const bytes = Object.values(languageData);
+            const total = bytes.reduce((a, b) => a + b, 0);
+            
+            // Generate colors
+            const colors = languages.map((_, i) => {
+                const hue = (i * 137) % 360; // Golden angle approximation for good distribution
+                return `hsl(${hue}, 70%, 60%)`;
+            });
+            
+            // Create chart
+            new Chart(languageCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: languages,
+                    datasets: [{
+                        data: bytes,
+                        backgroundColor: colors,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                boxWidth: 15
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.raw || 0;
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return `${label}: ${percentage}% (${(value / 1024).toFixed(1)} KB)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Commit Activity Chart
+        let commitActivity = [];
+        try {
+            commitActivity = JSON.parse('{{ commit_activity|tojson|safe }}');
+            console.log('Commit activity data:', commitActivity);
+        } catch (e) {
+            console.error('Error parsing commit activity data:', e);
+        }
+        
+        if (commitActivity && commitActivity.length > 0) {
+            const commitCtx = document.getElementById('commitActivityChart').getContext('2d');
+            
+            // Extract data for chart - handle both data formats
+            const weeks = commitActivity.map(week => {
+                // Handle both possible data formats
+                if (week.week) {
+                    // Original GitHub API format
+                    const date = new Date(week.week * 1000);
+                    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                } else if (week.date) {
+                    // Our custom format
+                    return new Date(week.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                }
+                return '';
+            }).filter(date => date); // Remove any empty dates
+            
+            const commits = commitActivity.map(week => {
+                // Handle both possible data formats
+                if (typeof week.total === 'number') {
+                    return week.total;
+                } else if (typeof week.count === 'number') {
+                    return week.count;
+                }
+                return 0;
+            });
+            
+            // Create chart
+            new Chart(commitCtx, {
+                type: 'line',
+                data: {
+                    labels: weeks,
+                    datasets: [{
+                        label: 'Commits',
+                        data: commits,
+                        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 2,
+                        tension: 0.1,
+                        pointRadius: 3,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: {
+                        duration: 1000,
+                        easing: 'easeOutQuart'
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + context.parsed.y + ' commits';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                precision: 0,  // Only show integers
+                                stepSize: 1   // Increment by 1
+                            },
+                            title: {
+                                display: true,
+                                text: 'Number of Commits'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Week'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Export Results Button
+    });
+    
+    // Store repository data for export
+    </script>
+    
+    <div id="repoData" 
+         data-repo-name="{{ repo_name|escape }}" 
+         data-repo-owner="{{ repo_owner|escape }}" 
+         data-repo-url="{{ repo_url|escape }}" 
+         data-repo-description="{{ repo_description|escape }}" 
+         data-stars="{{ stars|default(0) }}" 
+         data-forks="{{ forks|default(0) }}" 
+         data-open-issues="{{ open_issues|default(0) }}" 
+         data-created-at="{{ created_at|escape }}" 
+         data-last-updated="{{ last_updated|escape }}" 
+         data-health-score="{{ health_score|default(70) }}" 
+         data-activity-score="{{ activity_score|default(65) }}" 
+         data-community-score="{{ community_score|default(65) }}" 
+         data-analyzed-at="{{ now|escape }}" 
+         data-languages='{{ languages|tojson|safe }}' 
+         data-contributors='{{ contributors|tojson|safe }}' 
+         data-commits='{{ commits|tojson|safe }}'
+         style="display: none;">
+    </div>
+
+    <script>
+    // Apply styles and initialize functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        // Apply styles to language badges
+        document.querySelectorAll('.language-badge').forEach(function(badge) {
+            var color = badge.getAttribute('data-color');
+            var percentage = badge.getAttribute('data-percentage');
+            badge.style.backgroundColor = color;
+            badge.setAttribute('data-tippy-content', percentage + '% of codebase');
+        });
+        
+        // Apply styles to progress bars
+        document.querySelectorAll('.progress-bar[data-score]').forEach(function(bar) {
+            var score = bar.getAttribute('data-score');
+            bar.style.width = score + '%';
+            bar.setAttribute('aria-valuenow', score);
+        });
+        
+        // Initialize tooltips
+        tippy('[data-tippy-content]', {
+            theme: 'light-border',
+            animation: 'shift-away'
+        });
+
+        document.getElementById('export-json-btn').addEventListener('click', function() {
+            // Get data from data attributes
+            const dataElement = document.getElementById('repoData');
+            
+            // Create the export data object
+            const exportData = {
+                repository: {
+                    name: dataElement.getAttribute('data-repo-name'),
+                    owner: dataElement.getAttribute('data-repo-owner'),
+                    url: dataElement.getAttribute('data-repo-url'),
+                    description: dataElement.getAttribute('data-repo-description'),
+                    stars: parseInt(dataElement.getAttribute('data-stars') || 0),
+                    forks: parseInt(dataElement.getAttribute('data-forks') || 0),
+                    open_issues: parseInt(dataElement.getAttribute('data-open-issues') || 0),
+                    created_at: dataElement.getAttribute('data-created-at'),
+                    last_updated: dataElement.getAttribute('data-last-updated')
+                },
+                metrics: {
+                    health_score: parseInt(dataElement.getAttribute('data-health-score') || 70),
+                    activity_score: parseInt(dataElement.getAttribute('data-activity-score') || 65),
+                    community_score: parseInt(dataElement.getAttribute('data-community-score') || 65),
+                    analyzed_at: dataElement.getAttribute('data-analyzed-at')
+                }
+            };
+            
+            // Add complex data
+            try {
+                exportData.languages = JSON.parse(dataElement.getAttribute('data-languages') || '{}');
+                exportData.contributors = JSON.parse(dataElement.getAttribute('data-contributors') || '[]');
+                exportData.commits = JSON.parse(dataElement.getAttribute('data-commits') || '[]');
+            } catch (e) {
+                console.error('Error parsing JSON data:', e);
+            }
+            
+            // Convert to JSON string with pretty formatting
+            const jsonString = JSON.stringify(exportData, null, 2);
+            
+            // Create a blob and download link
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = exportData.repository.owner + "_" + exportData.repository.name + "_analysis.json";
+            document.body.appendChild(a);
+            a.click();
+            
+            // Clean up
+            setTimeout(function() {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 0);
+        });
+    });
+    </script>
+{% endblock %}
